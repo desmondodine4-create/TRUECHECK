@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">TRUECHECK</string>
+    <string name="tagline">Scan it. Check it. Trust it.</string>
+    <string name="action_scan_product">SCAN PRODUCT</string>
+    <string name="action_verify_product">VERIFY PRODUCT</string>
+    <string name="error_invalid_email">Please enter a valid email address.</string>
+    <string name="error_password_too_short">Password must be at least 8 characters.</string>
+    <string name="error_password_mismatch">Passwords do not match.</string>
+    <string name="error_empty_name">Please enter your full name.</string>
+    <string name="error_empty_code">Please enter a security authentication code.</string>
+    <string name="ai_firebase_notice">Live Gemini packaging inspection requires Firebase AI Logic. Showing clearly labeled sample analysis.</string>
+</resources>

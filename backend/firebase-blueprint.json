@@ -1,0 +1,182 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Registered consumer or administrator account profile (no sensitive credentials stored in document).",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["CONSUMER", "ADMIN"] },
+        "status": { "type": "string", "enum": ["ACTIVE", "SUSPENDED"] },
+        "emailVerified": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lastActiveAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "fullName", "email", "role", "status", "createdAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Verified or flagged consumer product catalog record.",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string" },
+        "barcode": { "type": "string" },
+        "qrIdentifier": { "type": "string" },
+        "productName": { "type": "string" },
+        "brand": { "type": "string" },
+        "category": { "type": "string", "enum": ["MEDICINES", "FOOD_BEVERAGES", "BEAUTY_PERSONAL_CARE", "OTHER"] },
+        "manufacturer": { "type": "string" },
+        "registrationNumber": { "type": "string" },
+        "registryStatus": { "type": "string", "enum": ["REAL", "SUSPICIOUS", "FAKE", "UNVERIFIED"] },
+        "sourceLabel": { "type": "string" },
+        "safetyNote": { "type": "string" }
+      },
+      "required": ["productId", "productName", "brand", "category", "registryStatus"]
+    },
+    "ProductCode": {
+      "title": "ProductCode",
+      "description": "Manufacturer scratch-off security PINs and single-use redemption counters.",
+      "type": "object",
+      "properties": {
+        "codeHash": { "type": "string" },
+        "productId": { "type": "string" },
+        "batchId": { "type": "string" },
+        "authenticityFlag": { "type": "string", "enum": ["GENUINE", "COUNTERFEIT"] },
+        "verificationCount": { "type": "integer" },
+        "firstVerifiedAt": { "type": "string", "format": "date-time" },
+        "firstVerifiedByUid": { "type": "string" }
+      },
+      "required": ["codeHash", "productId", "authenticityFlag", "verificationCount"]
+    },
+    "SecurityCodeVerification": {
+      "title": "SecurityCodeVerification",
+      "description": "Immutable audit log of security code verification attempts.",
+      "type": "object",
+      "properties": {
+        "verificationId": { "type": "string" },
+        "codeHash": { "type": "string" },
+        "uid": { "type": "string" },
+        "outcome": { "type": "string", "enum": ["REAL", "SUSPICIOUS", "FAKE", "UNVERIFIED"] },
+        "checkedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["verificationId", "codeHash", "uid", "outcome", "checkedAt"]
+    },
+    "ProductBatch": {
+      "title": "ProductBatch",
+      "description": "Batch numbers, manufacturing windows, expiry dates, and recall flags.",
+      "type": "object",
+      "properties": {
+        "batchId": { "type": "string" },
+        "productId": { "type": "string" },
+        "batchNumber": { "type": "string" },
+        "manufacturingDate": { "type": "string" },
+        "expiryDate": { "type": "string" },
+        "recalled": { "type": "boolean" }
+      },
+      "required": ["batchId", "productId", "batchNumber", "recalled"]
+    },
+    "Scan": {
+      "title": "Scan",
+      "description": "Consumer product scan record owned by uid.",
+      "type": "object",
+      "properties": {
+        "scanId": { "type": "string" },
+        "uid": { "type": "string" },
+        "method": { "type": "string", "enum": ["BARCODE", "QR_CODE", "SECURITY_CODE", "PRODUCT_PHOTO"] },
+        "rawIdentifier": { "type": "string" },
+        "productName": { "type": "string" },
+        "brand": { "type": "string" },
+        "category": { "type": "string" },
+        "status": { "type": "string", "enum": ["REAL", "SUSPICIOUS", "FAKE", "UNVERIFIED"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["scanId", "uid", "method", "status", "createdAt"]
+    },
+    "VerificationResult": {
+      "title": "VerificationResult",
+      "description": "Detailed evidence breakdown attached to a consumer scan.",
+      "type": "object",
+      "properties": {
+        "scanId": { "type": "string" },
+        "uid": { "type": "string" },
+        "reason": { "type": "string" },
+        "verificationSource": { "type": "string" },
+        "recommendedAction": { "type": "string" },
+        "evidenceChecked": { "type": "array" },
+        "evidenceMatched": { "type": "array" },
+        "evidenceFailed": { "type": "array" },
+        "providerLimitations": { "type": "array" }
+      },
+      "required": ["scanId", "uid", "reason", "verificationSource", "recommendedAction"]
+    },
+    "UserActivity": {
+      "title": "UserActivity",
+      "description": "Per-user per-UTC-day activity rollup for deduplicated DAU/MAU analytics.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "activityDateUtc": { "type": "string" },
+        "lastActivityType": { "type": "string" },
+        "eventCount": { "type": "integer" },
+        "lastActiveAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "activityDateUtc", "eventCount", "lastActiveAt"]
+    },
+    "DailyAnalytics": {
+      "title": "DailyAnalytics",
+      "description": "Pre-aggregated daily KPIs written exclusively by Cloud Functions.",
+      "type": "object",
+      "properties": {
+        "dateUtc": { "type": "string" },
+        "dau": { "type": "integer" },
+        "newUsers": { "type": "integer" },
+        "totalScans": { "type": "integer" },
+        "realCount": { "type": "integer" },
+        "suspiciousCount": { "type": "integer" },
+        "fakeCount": { "type": "integer" },
+        "unverifiedCount": { "type": "integer" }
+      },
+      "required": ["dateUtc", "dau", "newUsers", "totalScans"]
+    },
+    "TrustedReferenceImage": {
+      "title": "TrustedReferenceImage",
+      "description": "Verified packaging reference thumbnails and typography metadata.",
+      "type": "object",
+      "properties": {
+        "imageId": { "type": "string" },
+        "productId": { "type": "string" },
+        "storagePath": { "type": "string" },
+        "angleLabel": { "type": "string" }
+      },
+      "required": ["imageId", "productId", "storagePath"]
+    },
+    "RegulatoryRecord": {
+      "title": "RegulatoryRecord",
+      "description": "NAFDAC and national regulatory approval/recall notices.",
+      "type": "object",
+      "properties": {
+        "registrationNumber": { "type": "string" },
+        "authority": { "type": "string" },
+        "productName": { "type": "string" },
+        "status": { "type": "string", "enum": ["ACTIVE", "EXPIRED", "REVOKED", "RECALLED"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["registrationNumber", "authority", "productName", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": { "schema": "User", "description": "User profile document" },
+    "/products/{productId}": { "schema": "Product", "description": "Catalog product" },
+    "/productCodes/{codeHash}": { "schema": "ProductCode", "description": "Protected manufacturer security codes" },
+    "/securityCodeVerifications/{verificationId}": { "schema": "SecurityCodeVerification", "description": "Audit trail of code checks" },
+    "/productBatches/{batchId}": { "schema": "ProductBatch", "description": "Product manufacturing batches" },
+    "/scans/{scanId}": { "schema": "Scan", "description": "User product scan history" },
+    "/verificationResults/{scanId}": { "schema": "VerificationResult", "description": "Evidence details for a scan" },
+    "/userActivity/{activityKey}": { "schema": "UserActivity", "description": "UTC-dated activity doc (${uid}_${yyyyMMdd})" },
+    "/dailyAnalytics/{dateUtc}": { "schema": "DailyAnalytics", "description": "Admin-only UTC daily KPI rollup" },
+    "/trustedReferenceImages/{imageId}": { "schema": "TrustedReferenceImage", "description": "Reference packaging images" },
+    "/regulatoryRecords/{registrationNumber}": { "schema": "RegulatoryRecord", "description": "Regulatory records & recalls" }
+  }
+}

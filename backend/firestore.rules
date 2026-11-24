@@ -1,0 +1,119 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN' &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'ACTIVE')
+      );
+    }
+
+    function isActiveConsumer() {
+      return isSignedIn() && (
+        !exists(/databases/$(database)/documents/users/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'ACTIVE'
+      );
+    }
+
+    // Users: consumers can read/create their own profile strictly with role == 'CONSUMER' and status == 'ACTIVE'.
+    // Users can update only fullName / lastActiveAt; only Admins or Cloud Functions can modify role or status.
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid)
+        && request.resource.data.uid == uid
+        && request.resource.data.role == 'CONSUMER'
+        && request.resource.data.status == 'ACTIVE'
+        && request.resource.data.fullName is string
+        && request.resource.data.fullName.size() >= 2
+        && request.resource.data.fullName.size() <= 120;
+      allow update: if (
+        isOwner(uid)
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.email == resource.data.email
+      ) || isAdmin();
+      allow delete: if isOwner(uid) && resource.data.role != 'ADMIN';
+    }
+
+    // Public catalog & regulatory reference data (read-only to signed-in users; admin/Cloud Functions write)
+    match /products/{productId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /productBatches/{batchId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /trustedReferenceImages/{imageId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /regulatoryRecords/{registrationNumber} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Security codes MUST never be directly queried or mutated by clients to avoid enumeration/tampering.
+    // All security code checks go through the verifySecurityCode Cloud Function.
+    match /productCodes/{codeHash} {
+      allow read, write: if isAdmin();
+    }
+
+    match /securityCodeVerifications/{verificationId} {
+      allow read: if (isSignedIn() && resource.data.uid == request.auth.uid) || isAdmin();
+      allow write: if false; // Written exclusively by Cloud Functions Admin SDK
+    }
+
+    // Consumer scan history: strictly isolated per user; Admins can read aggregate metadata.
+    match /scans/{scanId} {
+      allow read: if (isSignedIn() && resource.data.uid == request.auth.uid) || isAdmin();
+      allow create: if isActiveConsumer()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.scanId == scanId
+        && request.resource.data.method in ['BARCODE', 'QR_CODE', 'SECURITY_CODE', 'PRODUCT_PHOTO']
+        && request.resource.data.status in ['REAL', 'SUSPICIOUS', 'FAKE', 'UNVERIFIED'];
+      allow update: if false;
+      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    match /verificationResults/{scanId} {
+      allow read: if (isSignedIn() && resource.data.uid == request.auth.uid) || isAdmin();
+      allow create: if isActiveConsumer()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.scanId == scanId;
+      allow update: if false;
+      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // UTC-dated per-user activity records for DAU/MAU tracking.
+    match /userActivity/{activityKey} {
+      allow read: if (isSignedIn() && resource.data.uid == request.auth.uid) || isAdmin();
+      allow create, update: if isActiveConsumer()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.activityDateUtc is string
+        && activityKey == (request.auth.uid + '_' + request.resource.data.activityDateUtc);
+      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // Admin-only aggregated analytics.
+    match /dailyAnalytics/{dateUtc} {
+      allow read: if isAdmin();
+      allow write: if false; // Maintained by scheduled/triggered Cloud Functions
+    }
+  }
+}

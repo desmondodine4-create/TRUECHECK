@@ -1,0 +1,6 @@
+{
+  "name": "TRUECHECK",
+  "description": "Consumer product authentication app for verifying packaged goods via barcodes, QR codes, security codes, and packaging inspection.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
